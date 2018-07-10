@@ -1,10 +1,10 @@
 /*
  * spline.h
  *
- * simple cubic spline interpolation library without external
- * dependencies
+ * simple cubic spline interpolation library
  *
  * ---------------------------------------------------------------------
+ * Copyright (C) 2018 Luis Lucas (luisfrlucas at gmail.com)
  * Copyright (C) 2011, 2014 Tino Kluge (ttk448 at gmail.com)
  *
  *  This program is free software; you can redistribute it and/or
