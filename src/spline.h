@@ -27,8 +27,6 @@
 #ifndef TK_SPLINE_H
 #define TK_SPLINE_H
 
-#define ARMA_NO_DEBUG
-
 #include <cstdio>
 #include <cassert>
 #include <vector>

@@ -7,7 +7,7 @@ IALGLIB=-I$(ALGLIB)/src
 # compiler setting
 CC=g++
 CFLAGS = ${IALGLIB} -I../src
-CFLAGS += -O2 -DNDEBUG -g
+CFLAGS += -O2 -DNDEBUG -DARMA_NO_DEBUG
 CFLAGS += -Wall
 LFLAGS=
 
