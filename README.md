@@ -1,6 +1,7 @@
 ## spline
-c++ cubic spline library
+C++ cubic spline library with Armadillo interface
 
+Based on:
 http://kluge.in-chemnitz.de/opensource/spline/
 
 It generates a piecewise polynomial function of degree 3 and is

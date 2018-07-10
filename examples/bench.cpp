@@ -61,6 +61,7 @@ private:
     tk::spline m_spline_tk;
     std::vector<double> m_X1, m_Y1, m_X2, m_Y2;
     alglib::real_1d_array m_AX1, m_AY1, m_AX2, m_AY2;
+    arma::vec am_X1, am_Y1;
 
 public:
     enum method {TK, ALGLIB};
@@ -87,13 +88,16 @@ public:
         m_AX1.setcontent(n1, &(m_X1[0]));
         m_AY1.setcontent(n1, &(m_Y1[0]));
         m_AX2.setcontent(n2, &(m_X2[0]));
+
+	am_X1 = arma::conv_to<arma::vec>::from(m_X1);
+	am_Y1 = arma::conv_to<arma::vec>::from(m_Y1);
     }
 
     // create spline from (X,Y) vectors
     void create_spline(method m)
     {
         if(m==TK) {
-            m_spline_tk.set_points(m_X1,m_Y1);
+            m_spline_tk.set_points(am_X1,am_Y1);
         } else {
             alglib::spline1dbuildcubic(m_AX1, m_AY1, m_X1.size(),2,0.0,2,0.0,
                                        m_spline_al);
@@ -118,7 +122,7 @@ public:
         if(m==TK) {
             tk::spline s;
             size_t n2=m_X2.size();
-            s.set_points(m_X1,m_Y1);
+            s.set_points(am_X1,am_Y1);
             m_Y2.resize(n2);
             for(size_t i=0; i<n2; i++) {
                 m_Y2[i]=s(m_X2[i]);

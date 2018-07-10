@@ -1,13 +1,13 @@
 # some programmes require ALGLIB for comparison
 # adjust the path to the ALGLIB library below
-ALGLIB=../../alglib
+ALGLIB=/usr/lib64
 LALGLIB=-L$(ALGLIB) -lalglib
 IALGLIB=-I$(ALGLIB)/src
 
 # compiler setting
 CC=g++
 CFLAGS = ${IALGLIB} -I../src
-CFLAGS += -O2 -DNDEBUG
+CFLAGS += -O2 -DNDEBUG -g
 CFLAGS += -Wall
 LFLAGS=
 

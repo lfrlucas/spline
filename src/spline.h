@@ -27,10 +27,13 @@
 #ifndef TK_SPLINE_H
 #define TK_SPLINE_H
 
+#define ARMA_NO_DEBUG
+
 #include <cstdio>
 #include <cassert>
 #include <vector>
 #include <algorithm>
+#include <armadillo>
 
 
 // unnamed namespace only because the implementation is in this
@@ -45,21 +48,21 @@ namespace tk
 class band_matrix
 {
 private:
-    std::vector< std::vector<double> > m_upper;  // upper band
-    std::vector< std::vector<double> > m_lower;  // lower band
+    arma::mat m_upper;  // upper band
+    arma::mat m_lower;  // lower band
 public:
-    band_matrix() {};                             // constructor
-    band_matrix(int dim, int n_u, int n_l);       // constructor
-    ~band_matrix() {};                            // destructor
-    void resize(int dim, int n_u, int n_l);      // init with dim,n_u,n_l
+    band_matrix() {}                             // constructor
+    band_matrix(int dim, int n_u, int n_l);      // constructor
+    ~band_matrix() {}                            // destructor
+    void setsize(int dim, int n_u, int n_l);      // init with dim,n_u,n_l
     int dim() const;                             // matrix dimension
     int num_upper() const
     {
-        return m_upper.size()-1;
+        return m_upper.n_cols-1;
     }
     int num_lower() const
     {
-        return m_lower.size()-1;
+        return m_lower.n_cols-1;
     }
     // access operator
     double & operator () (int i, int j);            // write
@@ -68,11 +71,10 @@ public:
     double& saved_diag(int i);
     double  saved_diag(int i) const;
     void lu_decompose();
-    std::vector<double> r_solve(const std::vector<double>& b) const;
-    std::vector<double> l_solve(const std::vector<double>& b) const;
-    std::vector<double> lu_solve(const std::vector<double>& b,
+    arma::vec r_solve(const arma::vec& b) const;
+    arma::vec l_solve(const arma::vec& b) const;
+    arma::vec lu_solve(const arma::vec& b,
                                  bool is_lu_decomposed=false);
-
 };
 
 
@@ -86,10 +88,10 @@ public:
     };
 
 private:
-    std::vector<double> m_x,m_y;            // x,y coordinates of points
+    arma::vec m_x,m_y;            // x,y coordinates of points
     // interpolation parameters
     // f(x) = a*(x-x_i)^3 + b*(x-x_i)^2 + c*(x-x_i) + y_i
-    std::vector<double> m_a,m_b,m_c;        // spline coefficients
+    arma::vec m_a,m_b,m_c;        // spline coefficients
     double  m_b0, m_c0;                     // for left extrapol
     bd_type m_left, m_right;
     double  m_left_value, m_right_value;
@@ -108,10 +110,11 @@ public:
     void set_boundary(bd_type left, double left_value,
                       bd_type right, double right_value,
                       bool force_linear_extrapolation=false);
-    void set_points(const std::vector<double>& x,
-                    const std::vector<double>& y, bool cubic_spline=true);
+    void set_points(const arma::vec& x,
+                    const arma::vec& y, bool cubic_spline=true);
     double operator() (double x) const;
     double deriv(int order, double x) const;
+    int mx_lower_bound(int first, int last, double x) const;
 };
 
 
@@ -126,26 +129,20 @@ public:
 
 band_matrix::band_matrix(int dim, int n_u, int n_l)
 {
-    resize(dim, n_u, n_l);
+    setsize(dim, n_u, n_l);
 }
-void band_matrix::resize(int dim, int n_u, int n_l)
+void band_matrix::setsize(int dim, int n_u, int n_l)
 {
     assert(dim>0);
     assert(n_u>=0);
     assert(n_l>=0);
-    m_upper.resize(n_u+1);
-    m_lower.resize(n_l+1);
-    for(size_t i=0; i<m_upper.size(); i++) {
-        m_upper[i].resize(dim);
-    }
-    for(size_t i=0; i<m_lower.size(); i++) {
-        m_lower[i].resize(dim);
-    }
+    m_upper.set_size(dim, n_u+1);
+    m_lower.set_size(dim, n_l+1);
 }
 int band_matrix::dim() const
 {
-    if(m_upper.size()>0) {
-        return m_upper[0].size();
+    if(m_upper.n_cols>0) {
+        return m_upper.n_rows;
     } else {
         return 0;
     }
@@ -160,8 +157,8 @@ double & band_matrix::operator () (int i, int j)
     assert( (i>=0) && (i<dim()) && (j>=0) && (j<dim()) );
     assert( (-num_lower()<=k) && (k<=num_upper()) );
     // k=0 -> diogonal, k<0 lower left part, k>0 upper right part
-    if(k>=0)   return m_upper[k][i];
-    else	    return m_lower[-k][i];
+    if(k>=0)   return m_upper(i,k);
+    else	    return m_lower(i,-k);
 }
 double band_matrix::operator () (int i, int j) const
 {
@@ -169,19 +166,19 @@ double band_matrix::operator () (int i, int j) const
     assert( (i>=0) && (i<dim()) && (j>=0) && (j<dim()) );
     assert( (-num_lower()<=k) && (k<=num_upper()) );
     // k=0 -> diogonal, k<0 lower left part, k>0 upper right part
-    if(k>=0)   return m_upper[k][i];
-    else	    return m_lower[-k][i];
+    if(k>=0)   return m_upper(i,k);
+    else	    return m_lower(i,-k);
 }
 // second diag (used in LU decomposition), saved in m_lower
 double band_matrix::saved_diag(int i) const
 {
     assert( (i>=0) && (i<dim()) );
-    return m_lower[0][i];
+    return m_lower(i,0);
 }
 double & band_matrix::saved_diag(int i)
 {
     assert( (i>=0) && (i<dim()) );
-    return m_lower[0][i];
+    return m_lower(i,0);
 }
 
 // LR-Decomposition of a band matrix
@@ -220,10 +217,10 @@ void band_matrix::lu_decompose()
     }
 }
 // solves Ly=b
-std::vector<double> band_matrix::l_solve(const std::vector<double>& b) const
+arma::vec band_matrix::l_solve(const arma::vec& b) const
 {
     assert( this->dim()==(int)b.size() );
-    std::vector<double> x(this->dim());
+    arma::vec x(this->dim());
     int j_start;
     double sum;
     for(int i=0; i<this->dim(); i++) {
@@ -235,10 +232,10 @@ std::vector<double> band_matrix::l_solve(const std::vector<double>& b) const
     return x;
 }
 // solves Rx=y
-std::vector<double> band_matrix::r_solve(const std::vector<double>& b) const
+arma::vec band_matrix::r_solve(const arma::vec& b) const
 {
     assert( this->dim()==(int)b.size() );
-    std::vector<double> x(this->dim());
+    arma::vec x(this->dim());
     int j_stop;
     double sum;
     for(int i=this->dim()-1; i>=0; i--) {
@@ -250,11 +247,11 @@ std::vector<double> band_matrix::r_solve(const std::vector<double>& b) const
     return x;
 }
 
-std::vector<double> band_matrix::lu_solve(const std::vector<double>& b,
+arma::vec band_matrix::lu_solve(const arma::vec& b,
         bool is_lu_decomposed)
 {
     assert( this->dim()==(int)b.size() );
-    std::vector<double>  x,y;
+    arma::vec  x,y;
     if(is_lu_decomposed==false) {
         this->lu_decompose();
     }
@@ -282,8 +279,8 @@ void spline::set_boundary(spline::bd_type left, double left_value,
 }
 
 
-void spline::set_points(const std::vector<double>& x,
-                        const std::vector<double>& y, bool cubic_spline)
+void spline::set_points(const arma::vec& x,
+                        const arma::vec& y, bool cubic_spline)
 {
     assert(x.size()==y.size());
     assert(x.size()>2);
@@ -299,7 +296,7 @@ void spline::set_points(const std::vector<double>& x,
         // setting up the matrix and right hand side of the equation system
         // for the parameters b[]
         band_matrix A(n,1,1);
-        std::vector<double>  rhs(n);
+        arma::vec  rhs(n);
         for(int i=1; i<n-1; i++) {
             A(i,i-1)=1.0/3.0*(x[i]-x[i-1]);
             A(i,i)=2.0/3.0*(x[i+1]-x[i-1]);
@@ -341,17 +338,17 @@ void spline::set_points(const std::vector<double>& x,
         m_b=A.lu_solve(rhs);
 
         // calculate parameters a[] and c[] based on b[]
-        m_a.resize(n);
-        m_c.resize(n);
+        m_a.set_size(n);
+        m_c.set_size(n);
         for(int i=0; i<n-1; i++) {
             m_a[i]=1.0/3.0*(m_b[i+1]-m_b[i])/(x[i+1]-x[i]);
             m_c[i]=(y[i+1]-y[i])/(x[i+1]-x[i])
                    - 1.0/3.0*(2.0*m_b[i]+m_b[i+1])*(x[i+1]-x[i]);
         }
     } else { // linear interpolation
-        m_a.resize(n);
-        m_b.resize(n);
-        m_c.resize(n);
+        m_a.set_size(n);
+        m_b.set_size(n);
+        m_c.set_size(n);
         for(int i=0; i<n-1; i++) {
             m_a[i]=0.0;
             m_b[i]=0.0;
@@ -373,13 +370,25 @@ void spline::set_points(const std::vector<double>& x,
         m_b[n-1]=0.0;
 }
 
+inline int spline::mx_lower_bound(int first, int last, double x) const
+{
+    while (first < last) {
+        int mid = (first + last) >> 1;
+        if (x > m_x[mid]) {
+            first = mid + 1;
+        } else {
+            last = mid;
+        }
+    }
+    first = std::max(first-1, 0);
+    return first;
+}
+
 double spline::operator() (double x) const
 {
     size_t n=m_x.size();
     // find the closest point m_x[idx] < x, idx=0 even if x<m_x[0]
-    std::vector<double>::const_iterator it;
-    it=std::lower_bound(m_x.begin(),m_x.end(),x);
-    int idx=std::max( int(it-m_x.begin())-1, 0);
+    int idx = mx_lower_bound(0,m_x.n_elem,x);
 
     double h=x-m_x[idx];
     double interpol;
@@ -402,9 +411,7 @@ double spline::deriv(int order, double x) const
 
     size_t n=m_x.size();
     // find the closest point m_x[idx] < x, idx=0 even if x<m_x[0]
-    std::vector<double>::const_iterator it;
-    it=std::lower_bound(m_x.begin(),m_x.end(),x);
-    int idx=std::max( int(it-m_x.begin())-1, 0);
+    int idx = mx_lower_bound(0,m_x.n_elem,x);
 
     double h=x-m_x[idx];
     double interpol;
