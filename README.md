@@ -19,7 +19,7 @@ The library is a header-only file and can be used like this:
 ...
 int main(int argc, char** argv)
 {
-    std::vector<double> X, Y;
+    arma::vec X, Y;
     ...
     tk::spline s;
     s.set_points(X,Y);    // X needs to be sorted, strictly increasing
